@@ -1,0 +1,49 @@
+version: "3.2"
+services:
+  database:
+    image: mongo:4
+    restart: on-failure
+    healthcheck:
+      test: test $$(echo "rs.initiate().ok || rs.status().ok" | mongo --quiet) -eq 1
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    ports:
+      - "27017:27017"
+    volumes:
+      - "mongo-data:/bitnami"
+    environment:
+      - PUID=1000
+      - GUID=1000
+      - MONGODB_USERNAME=admin
+      - MONGODB_PASSWORD=P@ssw0rd
+      - MONGODB_DATABASE=netguru
+    command: "--bind_ip_all --replSet rs0"
+  srv-auth:
+    command: node src/server.js
+    build:
+      context: ./services/srv-auth
+      dockerfile: Dockerfile
+    ports:
+      - published: ${APP_PORT:-3000}
+        target: 3000
+    environment:
+      JWT_SECRET: secret
+
+  srv-movies:
+    build:
+      context: ./services/srv-movies
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    depends_on:
+      - database
+    environment:
+      PORT: 3001
+      MONGO_URL: "mongodb://database:27017/netguru"
+      JWT_SECRET: secret
+
+volumes:
+  mongo-data:
+    driver: local

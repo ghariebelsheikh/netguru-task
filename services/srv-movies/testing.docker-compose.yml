@@ -1,0 +1,15 @@
+version: "3"
+
+services:
+  mongo:
+    image: mongo:4
+    restart: on-failure
+    ports:
+      - 27017:27017
+    healthcheck:
+      test: test $$(echo "rs.initiate().ok || rs.status().ok" | mongo --quiet) -eq 1
+      interval: 10s
+      timeout: 3s
+      retries: 100
+      start_period: 3m
+    command: "--bind_ip_all --replSet rs0"
